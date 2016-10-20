@@ -1,0 +1,7 @@
+sbt -help
+sbt help
+sbt
+sbt --help
+help
+sbt about
+about
