@@ -6,7 +6,6 @@ scalaVersion := "2.11.8"
 
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.21", // Needed for new versions of akka-http - not sure why
-  "org.broadinstitute" %% "mdtypes" % "1.5",
   "org.json4s" %% "json4s-native" % "3.2.11",
   "org.json4s" %% "json4s-ext" % "3.2.11",
   "com.typesafe.akka" %% "akka-http-core" % "2.4.5", // Going to 2.4.x required Java 8
