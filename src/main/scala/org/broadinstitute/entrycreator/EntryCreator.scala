@@ -1,4 +1,6 @@
 package org.broadinstitute.entrycreator
+import java.io.PrintWriter
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding._
@@ -6,6 +8,8 @@ import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCodes}
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
+
+import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 /**
@@ -16,17 +20,19 @@ object EntryCreator extends App {
   implicit val materializer = ActorMaterializer()
   implicit val ec = system.dispatcher
   val logger = Logger("EntryCreator")
+
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
       head("EntryCreator", "1.0")
-      opt[String]('I', "sampleId").valueName("<id>").required().action((x,c) => c.copy(sampleId = x))
+      opt[String]('I', "sampleId").valueName("<id>").required().action((x, c) => c.copy(sampleId = x))
         .text("The ID of the sample to create an entry in MD for.")
-      opt[Long]('V', "version").valueName("version").optional().action((x,c) => c.copy(version = x))
+      opt[Long]('V', "version").valueName("version").optional().action((x, c) => c.copy(version = x))
         .text("Optional version string for the entry.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
     }
   }
+
   parser.parse(args, Config()
   ) match {
     case Some(config) => execute(config)
@@ -44,6 +50,14 @@ object EntryCreator extends App {
       case Success(s) =>
         s.status match {
           case StatusCodes.Created => logger.info("Creation successful: " + s.status)
+            val id = config.sampleId
+            val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
+            val json = s"""{\"id\": \"$id\", $version}"""
+            val pw = new PrintWriter(config.sampleId + ".EntryCreator.json")
+            pw.write(json)
+            pw.close()
+
+            logger.info(s"Version assigned: $version")
             System.exit(0)
           case _ =>
             val failMsg = s"Creation failed: " + s.status
@@ -67,5 +81,26 @@ object EntryCreator extends App {
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
     )
+  }
+  def extractSubstringByKeys(str: String, delim: String, keys: List[Char]): List[String] = {
+    val stringList = str.split(delim).toIterator
+    def populateList(mList: scala.collection.mutable.ListBuffer[String]): List[String] = {
+      @tailrec
+      def matchAccumulator(mList: scala.collection.mutable.ListBuffer[String]): List[String] = {
+        def isMatch(s: String): Boolean = {
+          val result = s.forall(keys.contains(_))
+          result
+        }
+        if (stringList.hasNext) {
+          val current = stringList.next()
+          if (isMatch(current)) {
+            mList += current
+          }
+        }
+        matchAccumulator(mList)
+      }
+      matchAccumulator(mList)
+    }
+    populateList(scala.collection.mutable.ListBuffer[String]())
   }
 }
