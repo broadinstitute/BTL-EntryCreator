@@ -26,8 +26,10 @@ object EntryCreator extends App {
       head("EntryCreator", "1.0")
       opt[String]('I', "sampleId").valueName("<id>").required().action((x, c) => c.copy(sampleId = x))
         .text("The ID of the sample to create an entry in MD for.")
-      opt[Long]('V', "version").valueName("version").optional().action((x, c) => c.copy(version = x))
+      opt[Long]('V', "version").valueName("<version>").optional().action((x, c) => c.copy(version = x))
         .text("Optional version string for the entry.")
+      opt[Boolean]('T', "test").valueName("<test>").hidden().optional().action((x, c) => c.copy(test = x))
+        .text("Optional. Set to true for testing.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
     }
@@ -45,18 +47,18 @@ object EntryCreator extends App {
   }
 
   def execute(config: Config) = {
-    val entry = createSampleEntry(config.sampleId, config.version)
+    val entry = createSampleEntry(config.sampleId, config.version, config.test)
     entry onComplete {
       case Success(s) =>
         s.status match {
-          case StatusCodes.Created => logger.info("Creation successful: " + s.status)
+          case a @ (StatusCodes.Created | StatusCodes.OK) => logger.info("Creation successful: " + s.status)
             val id = config.sampleId
-            val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
+            val version = entry.toString//.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
+            println(version)
             val json = s"""{\"id\": \"$id\", $version}"""
             val pw = new PrintWriter(config.sampleId + ".EntryCreator.json")
             pw.write(json)
             pw.close()
-
             logger.info(s"Version assigned: $version")
             System.exit(0)
           case _ =>
@@ -67,7 +69,7 @@ object EntryCreator extends App {
     }
   }
 
-  def createSampleEntry(id: String, version: Long): Future[HttpResponse] = {
+  def createSampleEntry(id: String, version: Long, test: Boolean): Future[HttpResponse] = {
     def createJson: String = {
       if (version == -999) {
         s"""{\"id\": \"$id\"}"""
@@ -77,7 +79,9 @@ object EntryCreator extends App {
     }
     val json = createJson
     logger.info(s"JSON created: $json")
-    val path = "http://btllims.broadinstitute.org:9101/MD/add/metrics"
+    var port = 9100
+    if (test) port = 9101
+    val path = s"http://btllims.broadinstitute.org:$port/MD/find/metrics"
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
     )
