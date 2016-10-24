@@ -25,6 +25,8 @@ object EntryCreator extends App {
         .text("The ID of the sample to create an entry in MD for.")
       opt[Long]('v', "version").valueName("<version>").optional().action((x, c) => c.copy(version = x))
         .text("Optional version string for the entry.")
+      opt[String]('o', "out").valueName("<out>").required().action((x,c) => c.copy(out = x))
+        .text("full path, including file name, for output EntryCreator.")
       opt[Boolean]('t', "test").valueName("<test>").hidden().optional().action((x, c) => c.copy(test = x))
         .text("Optional. Set to true for testing.")
       help("help").text("Prints this help text.")
@@ -54,7 +56,7 @@ object EntryCreator extends App {
             val id = config.sampleId
             val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
-            val pw = new PrintWriter(config.sampleId + ".EntryCreator.json")
+            val pw = new PrintWriter(config.out)
             pw.write(json)
             pw.close()
             logger.info(s"Version assigned: $version")
