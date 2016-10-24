@@ -1,6 +1,5 @@
 package org.broadinstitute.entrycreator
 import java.io.PrintWriter
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding._
@@ -8,8 +7,6 @@ import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCodes}
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
-
-import scala.annotation.tailrec
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 /**
@@ -24,11 +21,11 @@ object EntryCreator extends App {
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
       head("EntryCreator", "1.0")
-      opt[String]('I', "sampleId").valueName("<id>").required().action((x, c) => c.copy(sampleId = x))
+      opt[String]('i', "sampleId").valueName("<id>").required().action((x, c) => c.copy(sampleId = x))
         .text("The ID of the sample to create an entry in MD for.")
-      opt[Long]('V', "version").valueName("<version>").optional().action((x, c) => c.copy(version = x))
+      opt[Long]('v', "version").valueName("<version>").optional().action((x, c) => c.copy(version = x))
         .text("Optional version string for the entry.")
-      opt[Boolean]('T', "test").valueName("<test>").hidden().optional().action((x, c) => c.copy(test = x))
+      opt[Boolean]('t', "test").valueName("<test>").hidden().optional().action((x, c) => c.copy(test = x))
         .text("Optional. Set to true for testing.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
@@ -47,14 +44,15 @@ object EntryCreator extends App {
   }
 
   def execute(config: Config) = {
-    val entry = createSampleEntry(config.sampleId, config.version, config.test)
+    var port = 9100
+    if (config.test) port = 9101
+    val entry = createSampleEntry(config.sampleId, config.version, port)
     entry onComplete {
       case Success(s) =>
         s.status match {
-          case a @ (StatusCodes.Created | StatusCodes.OK) => logger.info("Creation successful: " + s.status)
+          case StatusCodes.Created => logger.info("Creation successful: " + s.status)
             val id = config.sampleId
-            val version = entry.toString//.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
-            println(version)
+            val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
             val pw = new PrintWriter(config.sampleId + ".EntryCreator.json")
             pw.write(json)
@@ -69,7 +67,7 @@ object EntryCreator extends App {
     }
   }
 
-  def createSampleEntry(id: String, version: Long, test: Boolean): Future[HttpResponse] = {
+  def createSampleEntry(id: String, version: Long, port: Int): Future[HttpResponse] = {
     def createJson: String = {
       if (version == -999) {
         s"""{\"id\": \"$id\"}"""
@@ -79,32 +77,10 @@ object EntryCreator extends App {
     }
     val json = createJson
     logger.info(s"JSON created: $json")
-    var port = 9100
-    if (test) port = 9101
-    val path = s"http://btllims.broadinstitute.org:$port/MD/find/metrics"
+    val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
+    logger.info(s"Request path: $path")
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
     )
-  }
-  def extractSubstringByKeys(str: String, delim: String, keys: List[Char]): List[String] = {
-    val stringList = str.split(delim).toIterator
-    def populateList(mList: scala.collection.mutable.ListBuffer[String]): List[String] = {
-      @tailrec
-      def matchAccumulator(mList: scala.collection.mutable.ListBuffer[String]): List[String] = {
-        def isMatch(s: String): Boolean = {
-          val result = s.forall(keys.contains(_))
-          result
-        }
-        if (stringList.hasNext) {
-          val current = stringList.next()
-          if (isMatch(current)) {
-            mList += current
-          }
-        }
-        matchAccumulator(mList)
-      }
-      matchAccumulator(mList)
-    }
-    populateList(scala.collection.mutable.ListBuffer[String]())
   }
 }
