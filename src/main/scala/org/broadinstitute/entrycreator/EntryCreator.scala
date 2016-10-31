@@ -21,13 +21,13 @@ object EntryCreator extends App {
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
       head("EntryCreator", "1.0")
-      opt[String]('i', "sampleId").valueName("<id>").required().action((x, c) => c.copy(sampleId = x))
-        .text("The ID of the sample to create an entry in MD for.")
-      opt[Long]('v', "version").valueName("<version>").optional().action((x, c) => c.copy(version = x))
+      opt[String]('i', "analysisId").valueName("<id>").required().action((x, c) => c.copy(analysisId = x))
+        .text("The ID of the analysis to create an entry in MD for.")
+      opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = x))
         .text("Optional version string for the entry.")
-      opt[String]('o', "out").valueName("<out>").required().action((x,c) => c.copy(out = x))
+      opt[String]('o', "out").valueName("<path>").required().action((x,c) => c.copy(out = x))
         .text("full path, including file name, for output EntryCreator.")
-      opt[Boolean]('t', "test").valueName("<test>").hidden().optional().action((x, c) => c.copy(test = x))
+      opt[Boolean]('t', "test").valueName("<true> or <false>").hidden().optional().action((x, c) => c.copy(test = x))
         .text("Optional. Set to true for testing.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
@@ -48,12 +48,13 @@ object EntryCreator extends App {
   def execute(config: Config) = {
     var port = 9100
     if (config.test) port = 9101
-    val entry = createSampleEntry(config.sampleId, config.version, port)
+    //if(config.test) port = 9111
+    val entry = createSampleEntry(config.analysisId, config.version, port)
     entry onComplete {
       case Success(s) =>
         s.status match {
           case StatusCodes.Created => logger.info("Creation successful: " + s.status)
-            val id = config.sampleId
+            val id = config.analysisId
             val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
             val pw = new PrintWriter(config.out)
@@ -62,7 +63,7 @@ object EntryCreator extends App {
             logger.info(s"Version assigned: $version")
             System.exit(0)
           case _ =>
-            val failMsg = s"Creation failed: " + s.status
+            val failMsg = s"Creation failed: " + s.status + "\n" + s.entity.toString
             failureExit(failMsg)
         }
       case Failure(f) => failureExit(s"Creation failed: $f")
@@ -80,9 +81,11 @@ object EntryCreator extends App {
     val json = createJson
     logger.info(s"JSON created: $json")
     val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
+    //val path = "http://69.173.118.250:9111/MD/add/metrics"
     logger.info(s"Request path: $path")
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
     )
+
   }
 }

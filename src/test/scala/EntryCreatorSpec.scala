@@ -10,6 +10,6 @@ class EntryCreatorSpec extends FlatSpec with Matchers{
 //    createSampleEntry("EntryCreatorSpec_1", -999, 9101)
 //  }
 //  it should "create an entry with specified version" in {
-//    createSampleEntry("EntryCreatorSpec_2", 1, 9101)
+//    createSampleEntry("EntryCreatorSpec_2", 1L, 9101)
 //  }
 }
