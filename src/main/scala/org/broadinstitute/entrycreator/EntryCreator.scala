@@ -47,8 +47,8 @@ object EntryCreator extends App {
 
   def execute(config: Config) = {
     var port = 9100
-    if (config.test) port = 9101
-    //if(config.test) port = 9111
+    //if (config.test) port = 9101
+    if(config.test) port = 9100
     val entry = createSampleEntry(config.analysisId, config.version, port)
     entry onComplete {
       case Success(s) =>
@@ -57,9 +57,9 @@ object EntryCreator extends App {
             val id = config.analysisId
             val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
-            val pw = new PrintWriter(config.out)
-            pw.write(json)
-            pw.close()
+//            val pw = new PrintWriter(config.out)
+//            pw.write(json)
+//            pw.close()
             logger.info(s"Version assigned: $version")
             System.exit(0)
           case _ =>
@@ -80,8 +80,8 @@ object EntryCreator extends App {
     }
     val json = createJson
     logger.info(s"JSON created: $json")
-    val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
-    //val path = "http://69.173.118.250:9111/MD/add/metrics"
+    //val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
+    val path = "http://gm0bf-7e3.broadinstitute.org:9100/MD/add/metrics"
     logger.info(s"Request path: $path")
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
