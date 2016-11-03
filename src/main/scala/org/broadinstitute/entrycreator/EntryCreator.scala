@@ -13,17 +13,17 @@ import scala.util.{Failure, Success}
   * Created by amr on 10/20/2016.
   */
 object EntryCreator extends App {
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-  implicit val ec = system.dispatcher
-  val logger = Logger("EntryCreator")
+  implicit lazy val system = ActorSystem()
+  implicit lazy val materializer = ActorMaterializer()
+  implicit lazy val ec = system.dispatcher
+  lazy val logger = Logger("EntryCreator")
 
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
-      head("EntryCreator", "1.0")
+      head("EntryCreator", "1.0.1")
       opt[String]('i', "analysisId").valueName("<id>").required().action((x, c) => c.copy(analysisId = x))
         .text("The ID of the analysis to create an entry in MD for.")
-      opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = x))
+      opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = Some(x)))
         .text("Optional version string for the entry.")
       opt[String]('o', "out").valueName("<path>").required().action((x,c) => c.copy(out = x))
         .text("full path, including file name, for output EntryCreator.")
@@ -47,8 +47,8 @@ object EntryCreator extends App {
 
   def execute(config: Config) = {
     var port = 9100
-    //if (config.test) port = 9101
-    if(config.test) port = 9100
+    if (config.test) port = 9101
+    //if(config.test) port = 9111
     val entry = createSampleEntry(config.analysisId, config.version, port)
     entry onComplete {
       case Success(s) =>
@@ -57,9 +57,9 @@ object EntryCreator extends App {
             val id = config.analysisId
             val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
-//            val pw = new PrintWriter(config.out)
-//            pw.write(json)
-//            pw.close()
+            val pw = new PrintWriter(config.out)
+            pw.write(json)
+            pw.close()
             logger.info(s"Version assigned: $version")
             System.exit(0)
           case _ =>
@@ -70,22 +70,19 @@ object EntryCreator extends App {
     }
   }
 
-  def createSampleEntry(id: String, version: Long, port: Int): Future[HttpResponse] = {
+  def createSampleEntry(id: String, version: Option[Long], port: Int): Future[HttpResponse] = {
     def createJson: String = {
-      if (version == -999) {
-        s"""{\"id\": \"$id\"}"""
-      } else {
-        s"""{\"id\": \"$id\", \"version\": $version}"""
+      version match {
+        case Some(v) => s"""{\"id\": \"$id\", \"version\": $v}"""
+        case None => s"""{\"id\": \"$id\"}"""
       }
     }
     val json = createJson
     logger.info(s"JSON created: $json")
-    //val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
-    val path = "http://gm0bf-7e3.broadinstitute.org:9100/MD/add/metrics"
+    val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
     logger.info(s"Request path: $path")
     Http().singleRequest(
       Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
     )
-
   }
 }
