@@ -55,6 +55,8 @@ object EntryCreator extends App {
         s.status match {
           case StatusCodes.Created => logger.info("Creation successful: " + s.status)
             val id = config.analysisId
+            // TODO: have to create a case class containing ID and Version and then create an unmarshaller like
+            // Thaniel did. Then we can unmarshall the response from entry.
             val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
             val json = s"""{\"id\": \"$id\", $version}"""
             val pw = new PrintWriter(config.out)
