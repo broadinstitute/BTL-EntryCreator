@@ -1,13 +1,15 @@
 package org.broadinstitute.entrycreator
 import java.io.PrintWriter
+import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding._
 import akka.http.scaladsl.model.ContentTypes._
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse, StatusCodes}
+import akka.http.scaladsl.unmarshalling.Unmarshal
 import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
-import scala.concurrent.Future
+import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 /**
   * Created by amr on 10/20/2016.
@@ -21,7 +23,7 @@ object EntryCreator extends App {
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
       head("EntryCreator", "1.0.1")
-      opt[String]('i', "analysisId").valueName("<id>").required().action((x, c) => c.copy(analysisId = x))
+      opt[String]('i', "entryId").valueName("<id>").required().action((x, c) => c.copy(entryId = x))
         .text("The ID of the analysis to create an entry in MD for.")
       opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = Some(x)))
         .text("Optional version string for the entry.")
@@ -48,24 +50,21 @@ object EntryCreator extends App {
   def execute(config: Config) = {
     var port = 9100
     if (config.test) port = 9101
-    //if(config.test) port = 9111
-    val entry = createSampleEntry(config.analysisId, config.version, port)
-    entry onComplete {
+    val response = createSampleEntry(config.entryId, config.version, port)
+    response onComplete {
       case Success(s) =>
+        val entryFuture = response.flatMap( response => Unmarshal(response.entity).to[Entry])
         s.status match {
           case StatusCodes.Created => logger.info("Creation successful: " + s.status)
-            val id = config.analysisId
-            // TODO: have to create a case class containing ID and Version and then create an unmarshaller like
-            // Thaniel did. Then we can unmarshall the response from entry.
-            val version = entry.toString.substring(entry.toString.indexOf('{') + 1, entry.toString.indexOf('}'))
-            val json = s"""{\"id\": \"$id\", $version}"""
-            val pw = new PrintWriter(config.out)
+            val me = Await.result(entryFuture, 5 seconds)
+            val json = s"""{\"id\": \"${me.id}\", \"version\": ${me.version}"""
+            val pw = new PrintWriter(s"${config.out}\\${me.id}.${me.version}.EntryCreator.json")
             pw.write(json)
             pw.close()
-            logger.info(s"Version assigned: $version")
+            logger.info(s"Version assigned: ${me.version}")
             System.exit(0)
           case _ =>
-            val failMsg = s"Creation failed: " + s.status + "\n" + s.entity.toString
+            val failMsg = s"Unexpected response: + ${s.status}\n${s.entity.toString}"
             failureExit(failMsg)
         }
       case Failure(f) => failureExit(s"Creation failed: $f")
