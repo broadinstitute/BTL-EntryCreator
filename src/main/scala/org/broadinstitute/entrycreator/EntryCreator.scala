@@ -11,6 +11,8 @@ import akka.stream.ActorMaterializer
 import com.typesafe.scalalogging.Logger
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
+import org.broadinstitute.entrycreator.Entry._
+
 /**
   * Created by amr on 10/20/2016.
   */
@@ -22,7 +24,7 @@ object EntryCreator extends App {
 
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
-      head("EntryCreator", "1.0.1")
+      head("EntryCreator", "1.0.2")
       opt[String]('i', "entryId").valueName("<id>").required().action((x, c) => c.copy(entryId = x))
         .text("The ID of the analysis to create an entry in MD for.")
       opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = Some(x)))
@@ -57,11 +59,12 @@ object EntryCreator extends App {
         s.status match {
           case StatusCodes.Created => logger.info("Creation successful: " + s.status)
             val me = Await.result(entryFuture, 5 seconds)
-            val json = s"""{\"id\": \"${me.id}\", \"version\": ${me.version}"""
-            val pw = new PrintWriter(s"${config.out}\\${me.id}.${me.version}.EntryCreator.json")
+            val e = EntryWithId(config.entryId, me)
+            val json = EntryWithId.writeJson(e)
+            val pw = new PrintWriter(s"${config.out}\\${e.id}.${e.version.getOrElse(0L)}.EntryCreator.json")
             pw.write(json)
             pw.close()
-            logger.info(s"Version assigned: ${me.version}")
+            logger.info(s"Version assigned: ${e.version.getOrElse(0L)}")
             System.exit(0)
           case _ =>
             val failMsg = s"Unexpected response: + ${s.status}\n${s.entity.toString}"
@@ -73,10 +76,8 @@ object EntryCreator extends App {
 
   def createSampleEntry(id: String, version: Option[Long], port: Int): Future[HttpResponse] = {
     def createJson: String = {
-      version match {
-        case Some(v) => s"""{\"id\": \"$id\", \"version\": $v}"""
-        case None => s"""{\"id\": \"$id\"}"""
-      }
+      val e = EntryWithId(id, version)
+      EntryWithId.writeJson(e)
     }
     val json = createJson
     logger.info(s"JSON created: $json")
