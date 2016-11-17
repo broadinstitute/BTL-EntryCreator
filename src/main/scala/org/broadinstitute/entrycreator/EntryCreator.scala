@@ -24,7 +24,7 @@ object EntryCreator extends App {
 
   def parser = {
     new scopt.OptionParser[Config]("EntryCreator") {
-      head("EntryCreator", "1.0.2")
+      head("EntryCreator", "1.0.3")
       opt[String]('i', "entryId").valueName("<id>").required().action((x, c) => c.copy(entryId = x))
         .text("The ID of the analysis to create an entry in MD for.")
       opt[Long]('v', "<version>").valueName("<number>").optional().action((x, c) => c.copy(version = Some(x)))
@@ -61,7 +61,7 @@ object EntryCreator extends App {
             val me = Await.result(entryFuture, 5 seconds)
             val e = EntryWithId(config.entryId, me)
             val json = EntryWithId.writeJson(e)
-            val pw = new PrintWriter(s"${config.out}\\${e.id}.${e.version.getOrElse(0L)}.EntryCreator.json")
+            val pw = new PrintWriter(s"${config.out}/${e.id}.EntryCreator.json")
             pw.write(json)
             pw.close()
             logger.info(s"Version assigned: ${e.version.getOrElse(0L)}")
