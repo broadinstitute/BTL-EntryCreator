@@ -1,6 +1,6 @@
 name := "EntryCreator"
 
-version := "1.0.5"
+version := "2017.0.5"
 
 scalaVersion := "2.11.8"
 
