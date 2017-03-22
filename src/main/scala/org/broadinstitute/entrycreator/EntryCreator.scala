@@ -1,5 +1,6 @@
 package org.broadinstitute.entrycreator
 import java.io.PrintWriter
+import scala.language.postfixOps
 import scala.concurrent.duration._
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -12,6 +13,7 @@ import com.typesafe.scalalogging.Logger
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success}
 import org.broadinstitute.entrycreator.Entry._
+import scopt.OptionParser
 
 /**
   * Created by amr on 10/20/2016.
@@ -22,7 +24,7 @@ object EntryCreator extends App {
   implicit lazy val ec = system.dispatcher
   lazy val logger = Logger("EntryCreator")
 
-  def parser = {
+  def parser: OptionParser[Config] = {
     new scopt.OptionParser[Config]("EntryCreator") {
       head("EntryCreator", "1.0.3")
       opt[String]('i', "entryId").valueName("<id>").required().action((x, c) => c.copy(entryId = x))
@@ -49,10 +51,11 @@ object EntryCreator extends App {
     System.exit(1)
   }
 
-  def execute(config: Config) = {
+  def execute(config: Config): Unit = {
     var port = 9100
     if (config.test) port = 9101
-    val response = createSampleEntry(config.entryId, config.version, port)
+    val pathPrefix = s"http://btllims.broadinstitute.org:$port/MD"
+    val response = createSampleEntry(config.entryId, config.version, pathPrefix)
     response onComplete {
       case Success(s) =>
         val entryFuture = response.flatMap( response => Unmarshal(response.entity).to[Entry])
@@ -74,17 +77,17 @@ object EntryCreator extends App {
     }
   }
 
-  def createSampleEntry(id: String, version: Option[Long], port: Int): Future[HttpResponse] = {
+  def createSampleEntry(id: String, version: Option[Long], pathPrefix: String): Future[HttpResponse] = {
     def createJson: String = {
       val e = EntryWithId(id, version)
       EntryWithId.writeJson(e)
     }
     val json = createJson
     logger.info(s"JSON created: $json")
-    val path = s"http://btllims.broadinstitute.org:$port/MD/add/metrics"
+    val path = s"$pathPrefix/add/metrics"
     logger.info(s"Request path: $path")
     Http().singleRequest(
-      Post(uri = path, entity = HttpEntity(contentType = `application/json`, string = json))
+      Post(path, HttpEntity(contentType = `application/json`, string = json))
     )
   }
 }
