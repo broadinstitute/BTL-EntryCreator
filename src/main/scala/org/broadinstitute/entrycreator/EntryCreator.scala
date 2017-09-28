@@ -52,9 +52,9 @@ object EntryCreator extends App {
   }
 
   def execute(config: Config): Unit = {
-    var port = 9100
-    if (config.test) port = 9101
-    val pathPrefix = s"http://btllims.broadinstitute.org:$port/MD"
+    var server = "btllims"
+    if (config.test) server = "gp3c5-33b"
+    val pathPrefix = s"http://$server.broadinstitute.org:9100/MD"
     val response = createSampleEntry(config.entryId, config.version, pathPrefix)
     response onComplete {
       case Success(s) =>

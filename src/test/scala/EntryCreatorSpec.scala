@@ -18,11 +18,10 @@ class EntryCreatorSpec extends FlatSpec with Matchers{
   private implicit lazy val ec = system.dispatcher
   // This pathPrefix for remote test on MDBeta
   //private val pathPrefix = "http://btllims.broadinstitute.org:9101/MD"
-  // This pathPrefix for Broad localhost testing.
-  //private val pathPrefix = "http://gp3c5-33b.broadinstitute.org:9100/MD"
-  private val pathPrefix = "http://osiris-pc:9100/MD"
-  private val set_id_1 = "TestSet1"
-  private val set_id_2 = "TestSet2"
+  // This pathPrefix for localhost testing.
+  private val pathPrefix = "http://gp3c5-33b.broadinstitute.org:9100/MD"
+  private val set_id_1 = "EntryCreatorSpec_1"
+  private val set_id_2 = "EntryCreatorSpec_2"
   "EntryCreator" should "create an entry with default long version" in {
     val response = createSampleEntry(set_id_1, None, pathPrefix)
     val result = Await.result(response, 5 seconds)
