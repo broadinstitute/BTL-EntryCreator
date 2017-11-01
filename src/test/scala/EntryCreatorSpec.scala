@@ -3,23 +3,26 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.client.RequestBuilding._
 import org.scalatest.{FlatSpec, Matchers}
 import org.broadinstitute.entrycreator.EntryCreator.createSampleEntry
+
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import akka.http.scaladsl.model.StatusCodes._
 import akka.stream.ActorMaterializer
+import org.broadinstitute.entrycreator.Config
+
 import scala.language.postfixOps
 
 /**
   * Created by amr on 10/20/2016.
   */
 class EntryCreatorSpec extends FlatSpec with Matchers{
+
   private implicit lazy val system = ActorSystem()
   private implicit lazy val materializer = ActorMaterializer()
   private implicit lazy val ec = system.dispatcher
   // This pathPrefix for remote test on MDBeta
-  //private val pathPrefix = "http://btllims.broadinstitute.org:9101/MD"
+  private val pathPrefix = "http://btllims.broadinstitute.org:9101/MD"
   // This pathPrefix for localhost testing.
-  private val pathPrefix = "http://gp3c5-33b.broadinstitute.org:9100/MD"
   private val set_id_1 = "EntryCreatorSpec_1"
   private val set_id_2 = "EntryCreatorSpec_2"
   "EntryCreator" should "create an entry with default long version" in {

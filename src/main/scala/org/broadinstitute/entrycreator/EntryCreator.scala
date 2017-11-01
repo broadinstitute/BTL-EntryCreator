@@ -33,8 +33,10 @@ object EntryCreator extends App {
         .text("Optional version string for the entry.")
       opt[String]('o', "out").valueName("<path>").required().action((x,c) => c.copy(out = x))
         .text("full path, including file name, for output EntryCreator.")
-      opt[Boolean]('t', "test").valueName("<true> or <false>").hidden().optional().action((x, c) => c.copy(test = x))
-        .text("Optional. Set to true for testing.")
+      opt[String]('h', "host").valueName("<host url>").optional().action((x, c) => c.copy(host = x))
+        .text("Optional. Default is http:\\\\btllims.broadinstitute.org.")
+      opt[Int]('p', "port").valueName("<port>").optional().action((x, c) => c.copy(port = x))
+        .text("Optional host port. Default is 9100. Use 9101 for MdBeta.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
     }
@@ -52,9 +54,7 @@ object EntryCreator extends App {
   }
 
   def execute(config: Config): Unit = {
-    var server = "btllims"
-    if (config.test) server = "gp3c5-33b"
-    val pathPrefix = s"http://$server.broadinstitute.org:9100/MD"
+    val pathPrefix = s"${config.host}:${config.port}/MD"
     val response = createSampleEntry(config.entryId, config.version, pathPrefix)
     response onComplete {
       case Success(s) =>
