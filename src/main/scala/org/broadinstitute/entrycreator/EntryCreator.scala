@@ -34,9 +34,9 @@ object EntryCreator extends App {
       opt[String]('o', "out").valueName("<path>").required().action((x,c) => c.copy(out = x))
         .text("full path, including file name, for output EntryCreator.")
       opt[String]('h', "host").valueName("<host url>").optional().action((x, c) => c.copy(host = x))
-        .text("Optional. Default is http:\\\\btllims.broadinstitute.org.")
+        .text("Optional. Specify database host. Default is http:\\\\btllims.broadinstitute.org.")
       opt[Int]('p', "port").valueName("<port>").optional().action((x, c) => c.copy(port = x))
-        .text("Optional host port. Default is 9100. Use 9101 for MdBeta.")
+        .text("Optional database host port. Default is 9100. Use 9101 for MdBeta.")
       help("help").text("Prints this help text.")
       note("\n A tool for creating blank MD entries.")
     }
